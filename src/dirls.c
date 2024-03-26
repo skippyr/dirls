@@ -5,8 +5,7 @@ static struct Credential *g_groupCredentialsTree = NULL;
 static struct EntryCache *g_entryCacheList = NULL;
 
 static int g_exitCode = 0;
-
-static void allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status)
+static struct EntryCache *allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status)
 {
     struct EntryCache *allocatedCache = allocateHeapMemory(sizeof(struct EntryCache));
     allocatedCache->user = resolveCredentialByID(&g_userCredentialsTree, 1, status->st_uid)->name;
@@ -21,13 +20,14 @@ static void allocateEntryCache(struct EntryCache **list, struct dirent *entry, s
     if (!*list)
     {
         *list = allocatedCache;
-        return;
+        return allocatedCache;
     }
     struct EntryCache *listCache;
     for (listCache = *list; listCache->next; listCache = listCache->next)
     {
     }
     listCache->next = allocatedCache;
+    return allocatedCache;
 }
 
 static char *allocateEntryCacheSize(struct stat *status)
