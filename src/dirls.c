@@ -5,6 +5,7 @@ static struct Credential *g_groupCredentialsTree = NULL;
 static struct EntryCache *g_entryCacheList = NULL;
 
 static int g_exitCode = 0;
+
 static struct EntryCache *allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status)
 {
     struct EntryCache *allocatedCache = allocateHeapMemory(sizeof(struct EntryCache));
@@ -51,6 +52,16 @@ static char *allocateEntryCacheSize(struct stat *status)
     char *size = allocateHeapMemory(formatSize);
     memcpy(size, format, formatSize);
     return size;
+}
+
+static int countDigits(size_t number)
+{
+    int totalOfDigits;
+    for (totalOfDigits = !number; number; number /= 10)
+    {
+        ++totalOfDigits;
+    }
+    return totalOfDigits;
 }
 
 static void deallocateCredentialsTree(struct Credential **tree)
@@ -101,6 +112,10 @@ static void readDirectory(char *directoryPath)
         return;
     }
     size_t directoryPathSize = strlen(directoryPath) + 1;
+    size_t totalOfEntries = 0;
+    int userColumnLength = 4;
+    int groupColumnLength = 5;
+    int sizeColumnLength = 4;
     for (struct dirent *entry; (entry = readdir(directoryStream));)
     {
         if (*entry->d_name == '.' && (!entry->d_name[1] || (entry->d_name[1] == '.' && !entry->d_name[2])))
@@ -114,10 +129,42 @@ static void readDirectory(char *directoryPath)
         stat(entryPath, &entryStatus);
         deallocateHeapMemory(entryPath);
         struct EntryCache *entryCache = allocateEntryCache(&g_entryCacheList, entry, &entryStatus);
-        printf("%s\n", entryCache->name);
+        size_t entryUserSize = strlen(entryCache->user);
+        size_t entryGroupSize = strlen(entryCache->group);
+        size_t entrySizeSize = strlen(entryCache->size);
+        if (entryUserSize > userColumnLength)
+        {
+            userColumnLength = entryUserSize;
+        }
+        if (entryGroupSize > groupColumnLength)
+        {
+            groupColumnLength = entryGroupSize;
+        }
+        if (entrySizeSize > sizeColumnLength)
+        {
+            sizeColumnLength = entrySizeSize;
+        }
+        ++totalOfEntries;
     }
     closedir(directoryStream);
+    int indexColumnLength = countDigits(totalOfEntries);
+    if (indexColumnLength < 3)
+    {
+        indexColumnLength = 3;
+    }
+    size_t index = 0;
+    for (struct EntryCache *cache = g_entryCacheList; cache; cache = cache->next)
+    {
+        printf("%*zu %-*s %-*s %s\n", indexColumnLength, index, userColumnLength, cache->user, groupColumnLength,
+               cache->group, cache->name);
+        ++index;
+    }
     deallocateEntryCache(&g_entryCacheList);
+    printf("-----------------------------------\n");
+    char *directoryFullPath = realpath(directoryPath, NULL);
+    printf("Path : \"%s\".\n", directoryFullPath);
+    printf("Total: %zu %s.\n", totalOfEntries, totalOfEntries == 1 ? "entry" : "entries");
+    deallocateHeapMemory(directoryFullPath);
 }
 
 static struct Credential *resolveCredentialByID(struct Credential **tree, int isUserType, uid_t id)

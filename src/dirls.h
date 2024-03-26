@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include <dirent.h>
 #include <grp.h>
 #include <pwd.h>
@@ -39,6 +40,7 @@ struct SIMultiplier
 
 static struct EntryCache *allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status);
 static char *allocateEntryCacheSize(struct stat *status);
+static int countDigits(size_t number);
 static void deallocateCredentialsTree(struct Credential **tree);
 static void deallocateEntryCache(struct EntryCache **list);
 static void readDirectory(char *directoryPath);
