@@ -40,8 +40,8 @@ struct SIMultiplier
 static void allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status);
 static char *allocateEntryCacheSize(struct stat *status);
 static struct Credential *resolveCredentialByID(struct Credential **tree, int isUserType, uid_t id);
-static void deallocateCredentialsTree(struct Credential *tree);
-static void deallocateEntryCache(struct EntryCache *list);
+static void deallocateCredentialsTree(struct Credential **tree);
+static void deallocateEntryCache(struct EntryCache **list);
 
 static void *allocateHeapMemory(size_t size);
 static void deallocateHeapMemory(void *allocation);

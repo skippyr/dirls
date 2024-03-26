@@ -99,37 +99,39 @@ static struct Credential *resolveCredentialByID(struct Credential **tree, int is
     return *node;
 }
 
-static void deallocateCredentialsTree(struct Credential *tree)
+static void deallocateCredentialsTree(struct Credential **tree)
 {
-    if (!tree)
+    if (!*tree)
     {
         return;
     }
-    if (tree->lowerCredential)
+    if ((*tree)->lowerCredential)
     {
-        deallocateCredentialsTree(tree->lowerCredential);
+        deallocateCredentialsTree(&(*tree)->lowerCredential);
     }
-    if (tree->higherCredential)
+    if ((*tree)->higherCredential)
     {
-        deallocateCredentialsTree(tree->higherCredential);
+        deallocateCredentialsTree(&(*tree)->higherCredential);
     }
-    deallocateHeapMemory(tree);
+    deallocateHeapMemory(*tree);
+    *tree = NULL;
 }
 
-static void deallocateEntryCache(struct EntryCache *list)
+static void deallocateEntryCache(struct EntryCache **list)
 {
-    if (!list)
+    if (!*list)
     {
         return;
     }
     struct EntryCache *nextCache;
-    for (struct EntryCache *currentCache = list; currentCache; currentCache = nextCache)
+    for (struct EntryCache *currentCache = *list; currentCache; currentCache = nextCache)
     {
         nextCache = currentCache->next;
         deallocateHeapMemory(currentCache->name);
         deallocateHeapMemory(currentCache->size);
         deallocateHeapMemory(currentCache);
     }
+    *list = NULL;
 }
 
 static void *allocateHeapMemory(size_t size)
