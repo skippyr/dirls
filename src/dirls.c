@@ -2,6 +2,25 @@
 
 static int g_exitCode = 0;
 
+static void *allocateHeapMemory(size_t size)
+{
+    void *allocation = malloc(size);
+    if (allocation)
+    {
+        return allocation;
+    }
+    throwError("can not allocate %zu bytes of memory on the heap.", size);
+    return NULL;
+}
+
+static void deallocateHeapMemory(void *allocation)
+{
+    if (allocation)
+    {
+        free(allocation);
+    }
+}
+
 static void throwError(char *format, ...)
 {
     va_list arguments;
