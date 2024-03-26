@@ -2,10 +2,58 @@
 
 static struct Credential *g_userCredentialsTree = NULL;
 static struct Credential *g_groupCredentialsTree = NULL;
+static struct EntryCache *g_entryCacheList = NULL;
 
 static int g_exitCode = 0;
 
-static struct Credential *resolveCredentialByID(struct Credential **tree, uid_t id, int isUserType)
+static void allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status)
+{
+    struct EntryCache *allocatedCache = allocateHeapMemory(sizeof(struct EntryCache));
+    allocatedCache->user = resolveCredentialByID(&g_userCredentialsTree, 1, status->st_uid)->name;
+    allocatedCache->group = resolveCredentialByID(&g_groupCredentialsTree, 0, status->st_gid)->name;
+    allocatedCache->mode = status->st_mode;
+    allocatedCache->modifiedEpoch = status->st_mtim.tv_sec;
+    size_t nameSize = strlen(entry->d_name) + 1;
+    allocatedCache->name = allocateHeapMemory(nameSize);
+    memcpy(allocatedCache->name, entry->d_name, nameSize);
+    allocatedCache->size = allocateEntryCacheSize(status);
+    allocatedCache->next = NULL;
+    if (!*list)
+    {
+        *list = allocatedCache;
+        return;
+    }
+    struct EntryCache *listCache;
+    for (listCache = *list; listCache->next; listCache = listCache->next)
+    {
+    }
+    listCache->next = allocatedCache;
+}
+
+static char *allocateEntryCacheSize(struct stat *status)
+{
+    struct SIMultiplier multipliers[] = {{1073741824, 'G'}, {1048576, 'M'}, {1024, 'k'}};
+    char format[9] = "";
+    for (size_t index = 0; index < 3; ++index)
+    {
+        if (status->st_size >= multipliers[index].value)
+        {
+            float size = status->st_size / multipliers[index].value;
+            sprintf(format, "%.1f%cB", size, multipliers[index].prefix);
+            break;
+        }
+    }
+    if (!*format)
+    {
+        sprintf(format, "%ldB", status->st_size);
+    }
+    size_t formatSize = strlen(format) + 1;
+    char *size = allocateHeapMemory(formatSize);
+    memcpy(size, format, formatSize);
+    return size;
+}
+
+static struct Credential *resolveCredentialByID(struct Credential **tree, int isUserType, uid_t id)
 {
     struct Credential **node = tree;
     while (*node)
@@ -66,6 +114,22 @@ static void deallocateCredentialsTree(struct Credential *tree)
         deallocateCredentialsTree(tree->higherCredential);
     }
     deallocateHeapMemory(tree);
+}
+
+static void deallocateEntryCache(struct EntryCache *list)
+{
+    if (!list)
+    {
+        return;
+    }
+    struct EntryCache *nextCache;
+    for (struct EntryCache *currentCache = list; currentCache; currentCache = nextCache)
+    {
+        nextCache = currentCache->next;
+        deallocateHeapMemory(currentCache->name);
+        deallocateHeapMemory(currentCache->size);
+        deallocateHeapMemory(currentCache);
+    }
 }
 
 static void *allocateHeapMemory(size_t size)

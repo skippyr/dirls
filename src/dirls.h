@@ -12,12 +12,6 @@
 #define PROGRAM_NAME "dirls"
 #define PROGRAM_VERSION "v2.0.0"
 
-enum CredentialType
-{
-    CredentialType_User,
-    CredentialType_Group
-};
-
 struct Credential
 {
     struct Credential *lowerCredential;
@@ -26,8 +20,28 @@ struct Credential
     char name[];
 };
 
-static struct Credential *resolveCredentialByID(struct Credential **tree, uid_t id, int isUserType);
+struct EntryCache
+{
+    char *user;
+    char *group;
+    char *name;
+    char *size;
+    struct EntryCache *next;
+    time_t modifiedEpoch;
+    mode_t mode;
+};
+
+struct SIMultiplier
+{
+    float value;
+    char prefix;
+};
+
+static void allocateEntryCache(struct EntryCache **list, struct dirent *entry, struct stat *status);
+static char *allocateEntryCacheSize(struct stat *status);
+static struct Credential *resolveCredentialByID(struct Credential **tree, int isUserType, uid_t id);
 static void deallocateCredentialsTree(struct Credential *tree);
+static void deallocateEntryCache(struct EntryCache *list);
 
 static void *allocateHeapMemory(size_t size);
 static void deallocateHeapMemory(void *allocation);
