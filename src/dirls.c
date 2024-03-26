@@ -53,6 +53,73 @@ static char *allocateEntryCacheSize(struct stat *status)
     return size;
 }
 
+static void deallocateCredentialsTree(struct Credential **tree)
+{
+    if (!*tree)
+    {
+        return;
+    }
+    if ((*tree)->lowerCredential)
+    {
+        deallocateCredentialsTree(&(*tree)->lowerCredential);
+    }
+    if ((*tree)->higherCredential)
+    {
+        deallocateCredentialsTree(&(*tree)->higherCredential);
+    }
+    deallocateHeapMemory(*tree);
+    *tree = NULL;
+}
+
+static void deallocateEntryCache(struct EntryCache **list)
+{
+    if (!*list)
+    {
+        return;
+    }
+    struct EntryCache *nextCache;
+    for (struct EntryCache *currentCache = *list; currentCache; currentCache = nextCache)
+    {
+        nextCache = currentCache->next;
+        deallocateHeapMemory(currentCache->name);
+        deallocateHeapMemory(currentCache->size);
+        deallocateHeapMemory(currentCache);
+    }
+    *list = NULL;
+}
+
+static void readDirectory(char *directoryPath)
+{
+    DIR *directoryStream = opendir(directoryPath);
+    if (!directoryStream)
+    {
+        struct stat directoryStatus;
+        writeError(stat(directoryPath, &directoryStatus) ? "can not find the entry \"%s\"."
+                   : S_ISDIR(directoryStatus.st_mode)    ? "can not open the directory \"%s\"."
+                                                         : "the entry \"%s\" is not a directory.",
+                   directoryPath);
+        return;
+    }
+    size_t directoryPathSize = strlen(directoryPath) + 1;
+    for (struct dirent *entry; (entry = readdir(directoryStream));)
+    {
+        if (*entry->d_name == '.' && (!entry->d_name[1] || (entry->d_name[1] == '.' && !entry->d_name[2])))
+        {
+            continue;
+        }
+        size_t entryNameSize = strlen(entry->d_name) + 1;
+        char *entryPath = allocateHeapMemory(directoryPathSize + entryNameSize);
+        sprintf(entryPath, "%s/%s", directoryPath, entry->d_name);
+        struct stat entryStatus;
+        stat(entryPath, &entryStatus);
+        deallocateHeapMemory(entryPath);
+        struct EntryCache *entryCache = allocateEntryCache(&g_entryCacheList, entry, &entryStatus);
+        printf("%s\n", entryCache->name);
+    }
+    closedir(directoryStream);
+    deallocateEntryCache(&g_entryCacheList);
+}
+
 static struct Credential *resolveCredentialByID(struct Credential **tree, int isUserType, uid_t id)
 {
     struct Credential **node = tree;
@@ -99,41 +166,6 @@ static struct Credential *resolveCredentialByID(struct Credential **tree, int is
     return *node;
 }
 
-static void deallocateCredentialsTree(struct Credential **tree)
-{
-    if (!*tree)
-    {
-        return;
-    }
-    if ((*tree)->lowerCredential)
-    {
-        deallocateCredentialsTree(&(*tree)->lowerCredential);
-    }
-    if ((*tree)->higherCredential)
-    {
-        deallocateCredentialsTree(&(*tree)->higherCredential);
-    }
-    deallocateHeapMemory(*tree);
-    *tree = NULL;
-}
-
-static void deallocateEntryCache(struct EntryCache **list)
-{
-    if (!*list)
-    {
-        return;
-    }
-    struct EntryCache *nextCache;
-    for (struct EntryCache *currentCache = *list; currentCache; currentCache = nextCache)
-    {
-        nextCache = currentCache->next;
-        deallocateHeapMemory(currentCache->name);
-        deallocateHeapMemory(currentCache->size);
-        deallocateHeapMemory(currentCache);
-    }
-    *list = NULL;
-}
-
 static void *allocateHeapMemory(size_t size)
 {
     void *allocation = malloc(size);
@@ -175,7 +207,19 @@ static void writeError(char *format, ...)
     g_exitCode = 1;
 }
 
-int main(void)
+int main(int totalOfArguments, char **arguments)
 {
+    if (totalOfArguments == 1)
+    {
+        readDirectory(".");
+        goto exit;
+    }
+    for (int index = 1; index < totalOfArguments; ++index)
+    {
+        readDirectory(arguments[index]);
+    }
+exit:
+    deallocateCredentialsTree(&g_userCredentialsTree);
+    deallocateCredentialsTree(&g_groupCredentialsTree);
     return g_exitCode;
 }
