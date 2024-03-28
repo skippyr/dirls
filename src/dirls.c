@@ -122,6 +122,8 @@ static void readDirectory(char *directoryPath)
     closedir(directoryStream);
     qsort(entryNames, totalEntries, sizeof(char *), sortAlphabetically);
     size_t directoryPathSize = strlen(directoryPath) + 1;
+    printf("Index User     Group    Modified Date         Size Mode           Name\n");
+    printf("----- -------- -------- ----------------- -------- -------------- ---------------\n");
     for (index = 0; index < totalEntries; ++index)
     {
         char *entryName = *(entryNames + index);
@@ -138,13 +140,18 @@ static void readDirectory(char *directoryPath)
         char entryModifiedDate[18];
         strftime(entryModifiedDate, sizeof(entryModifiedDate), "%b/%d/%Y %H:%M",
                  localtime(&entryStatus.st_mtim.tv_sec));
-        printf("%5zu %-8s %-8s %s %-8s %s %s\n", index + 1,
+        printf("%5zu %-8s %-8s %s %8s %s %s\n", index + 1,
                resolveCredentialByID(&g_userCredentialsTree, entryStatus.st_uid, 1)->name,
                resolveCredentialByID(&g_groupCredentialsTree, entryStatus.st_gid, 0)->name,
                entryModifiedDate, entrySize, entryMode, entryName);
         deallocateHeapMemory(entryName);
     }
     deallocateHeapMemory(entryNames);
+    printf("---------------------------------------------------------------------------------\n");
+    char *directoryFullPath = realpath(directoryPath, NULL);
+    printf("Path: \"%s\".\n", directoryFullPath);
+    printf("Total: %zu %s.\n", totalEntries, totalEntries == 1 ? "entry" : "entries");
+    deallocateHeapMemory(directoryFullPath);
 }
 
 static struct Credential *resolveCredentialByID(struct Credential **tree, uid_t id, int isUserType)
