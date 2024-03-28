@@ -135,10 +135,13 @@ static void readDirectory(char *directoryPath)
         char entryMode[15];
         formatEntrySize(entrySize, &entryStatus);
         formatEntryMode(entryMode, &entryStatus);
-        printf("%5zu %-8s %-8s %-8s %s %s\n", index + 1,
+        char entryModifiedDate[18];
+        strftime(entryModifiedDate, sizeof(entryModifiedDate), "%b/%d/%Y %H:%M",
+                 localtime(&entryStatus.st_mtim.tv_sec));
+        printf("%5zu %-8s %-8s %s %-8s %s %s\n", index + 1,
                resolveCredentialByID(&g_userCredentialsTree, entryStatus.st_uid, 1)->name,
                resolveCredentialByID(&g_groupCredentialsTree, entryStatus.st_gid, 0)->name,
-               entrySize, entryMode, entryName);
+               entryModifiedDate, entrySize, entryMode, entryName);
         deallocateHeapMemory(entryName);
     }
     deallocateHeapMemory(entryNames);
