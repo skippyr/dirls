@@ -78,6 +78,8 @@ static void readDirectory(char *directoryPath)
                    directoryPath);
         return;
     }
+    printf("Index User     Group    Modified Date         Size Mode           Name\n");
+    printf("----- -------- -------- ----------------- -------- -------------- ----------------\n");
     size_t totalEntries = -2;
     while (readdir(directoryStream))
     {
@@ -86,7 +88,8 @@ static void readDirectory(char *directoryPath)
     if (!totalEntries)
     {
         closedir(directoryStream);
-        return;
+        printf("%50s\n", "DIRECTORY IS EMPTY");
+        goto exit;
     }
     char **entryNames = allocateHeapMemory(sizeof(char *) * totalEntries);
     rewinddir(directoryStream);
@@ -106,8 +109,6 @@ static void readDirectory(char *directoryPath)
     closedir(directoryStream);
     qsort(entryNames, totalEntries, sizeof(char *), sortAlphabetically);
     size_t directoryPathSize = strlen(directoryPath) + 1;
-    printf("Index User     Group    Modified Date         Size Mode           Name\n");
-    printf("----- -------- -------- ----------------- -------- -------------- ---------------\n");
     for (index = 0; index < totalEntries; ++index)
     {
         char *entryName = *(entryNames + index);
@@ -131,7 +132,8 @@ static void readDirectory(char *directoryPath)
         deallocateHeapMemory(entryName);
     }
     deallocateHeapMemory(entryNames);
-    printf("---------------------------------------------------------------------------------\n");
+exit:
+    printf("----------------------------------------------------------------------------------\n");
     char *directoryFullPath = realpath(directoryPath, NULL);
     printf("Path: \"%s\".\n", directoryFullPath);
     printf("Total: %zu %s.\n", totalEntries, totalEntries == 1 ? "entry" : "entries");
