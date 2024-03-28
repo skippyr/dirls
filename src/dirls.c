@@ -22,6 +22,57 @@ static void deallocateCredentialsTree(struct Credential *tree)
     deallocateHeapMemory(tree);
 }
 
+static void formatEntryMode(char *buffer, struct stat *status)
+{
+    char characters[] = {'r', 'w', 'x'};
+    int flags[] = {S_IRUSR, S_IWUSR, S_IXUSR, S_IRGRP, S_IWGRP, S_IXGRP, S_IROTH, S_IWOTH, S_IXOTH};
+    switch (status->st_mode & S_IFMT)
+    {
+    case S_IFREG:
+        *buffer = '-';
+        break;
+    case S_IFDIR:
+        *buffer = 'd';
+        break;
+    case S_IFLNK:
+        *buffer = 'l';
+        break;
+    case S_IFBLK:
+        *buffer = 'b';
+        break;
+    case S_IFCHR:
+        *buffer = 'c';
+        break;
+    case S_IFIFO:
+        *buffer = 'f';
+        break;
+    case S_IFSOCK:
+        *buffer = 's';
+        break;
+    }
+    for (size_t index = 0; index < 9; index++)
+    {
+        buffer[index + 1] =
+            status->st_mode & flags[index] ? characters[index < 3 ? index : (index - 3) % 3] : '-';
+    }
+    buffer[10] = 0;
+}
+
+static void formatEntrySize(char *buffer, struct stat *status)
+{
+    struct SIMultiplier multipliers[] = {{1073741824, 'G'}, {1048576, 'M'}, {1024, 'k'}};
+    for (size_t index = 0; index < 3; ++index)
+    {
+        if (status->st_size >= multipliers[index].value)
+        {
+            float size = status->st_size / multipliers[index].value;
+            sprintf(buffer, "%.1f%cB", size, multipliers[index].prefix);
+            return;
+        }
+    }
+    sprintf(buffer, "%ldB", status->st_size);
+}
+
 static void readDirectory(char *directoryPath)
 {
     DIR *directoryStream = opendir(directoryPath);
@@ -44,7 +95,7 @@ static void readDirectory(char *directoryPath)
         closedir(directoryStream);
         return;
     }
-    char **entries = allocateHeapMemory(sizeof(char *) * totalEntries);
+    char **entryNames = allocateHeapMemory(sizeof(char *) * totalEntries);
     rewinddir(directoryStream);
     size_t index = 0;
     for (struct dirent *entry; (entry = readdir(directoryStream));)
@@ -57,25 +108,31 @@ static void readDirectory(char *directoryPath)
         size_t entryNameSize = strlen(entry->d_name) + 1;
         char *entryName = allocateHeapMemory(entryNameSize);
         memcpy(entryName, entry->d_name, entryNameSize);
-        *(entries + index++) = entryName;
+        *(entryNames + index++) = entryName;
     }
     closedir(directoryStream);
+    qsort(entryNames, totalEntries, sizeof(char *), sortAlphabetically);
     size_t directoryPathSize = strlen(directoryPath) + 1;
     for (index = 0; index < totalEntries; ++index)
     {
-        char *entry = *(entries + index);
-        size_t entrySize = strlen(entry) + 1;
-        char *entryPath = allocateHeapMemory(directoryPathSize + entrySize);
-        sprintf(entryPath, "%s/%s", directoryPath, entry);
+        char *entryName = *(entryNames + index);
+        size_t entryNameSize = strlen(entryName) + 1;
+        char *entryPath = allocateHeapMemory(directoryPathSize + entryNameSize);
+        sprintf(entryPath, "%s/%s", directoryPath, entryName);
         struct stat entryStatus;
         stat(entryPath, &entryStatus);
         deallocateHeapMemory(entryPath);
-        printf("%5zu %-8s %-8s %s\n", index + 1,
+        char entrySize[9];
+        char entryMode[11];
+        formatEntrySize(entrySize, &entryStatus);
+        formatEntryMode(entryMode, &entryStatus);
+        printf("%5zu %-8s %-8s %-8s %s %s\n", index + 1,
                resolveCredentialByID(&g_userCredentialsTree, entryStatus.st_uid, 1)->name,
-               resolveCredentialByID(&g_groupCredentialsTree, entryStatus.st_gid, 0)->name, entry);
-        deallocateHeapMemory(entry);
+               resolveCredentialByID(&g_groupCredentialsTree, entryStatus.st_gid, 0)->name,
+               entrySize, entryMode, entryName);
+        deallocateHeapMemory(entryName);
     }
-    deallocateHeapMemory(entries);
+    deallocateHeapMemory(entryNames);
 }
 
 static struct Credential *resolveCredentialByID(struct Credential **tree, uid_t id, int isUserType)

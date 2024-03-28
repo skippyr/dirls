@@ -1,4 +1,4 @@
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include <dirent.h>
 #include <grp.h>
 #include <pwd.h>
@@ -20,7 +20,15 @@ struct Credential
     char name[];
 };
 
+struct SIMultiplier
+{
+    float value;
+    char prefix;
+};
+
 static void deallocateCredentialsTree(struct Credential *tree);
+static void formatEntryMode(char *buffer, struct stat *status);
+static void formatEntrySize(char *buffer, struct stat *status);
 static void readDirectory(char *directoryPath);
 static struct Credential *resolveCredentialByID(struct Credential **tree, uid_t id, int isUserType);
 static int sortAlphabetically(const void *string0, const void *string1);
