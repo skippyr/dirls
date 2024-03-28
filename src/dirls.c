@@ -24,30 +24,14 @@ static void deallocateCredentialsTree(struct Credential *tree)
 
 static void formatEntryMode(char *buffer, struct stat *status)
 {
-    switch (status->st_mode & S_IFMT)
-    {
-    case S_IFREG:
-        *buffer = '-';
-        break;
-    case S_IFDIR:
-        *buffer = 'd';
-        break;
-    case S_IFLNK:
-        *buffer = 'l';
-        break;
-    case S_IFBLK:
-        *buffer = 'b';
-        break;
-    case S_IFCHR:
-        *buffer = 'c';
-        break;
-    case S_IFIFO:
-        *buffer = 'f';
-        break;
-    case S_IFSOCK:
-        *buffer = 's';
-        break;
-    }
+    mode_t type = status->st_mode & S_IFMT;
+    *buffer = type == S_IFDIR    ? 'd'
+              : type == S_IFLNK  ? 'l'
+              : type == S_IFBLK  ? 'b'
+              : type == S_IFCHR  ? 'c'
+              : type == S_IFIFO  ? 'f'
+              : type == S_IFSOCK ? 's'
+                                 : '-';
     char characters[] = {'r', 'w', 'x'};
     int flags[] = {S_IRUSR, S_IWUSR, S_IXUSR, S_IRGRP, S_IWGRP, S_IXGRP, S_IROTH, S_IWOTH, S_IXOTH};
     for (size_t index = 0; index < 9; index++)
