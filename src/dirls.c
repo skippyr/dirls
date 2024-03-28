@@ -24,8 +24,6 @@ static void deallocateCredentialsTree(struct Credential *tree)
 
 static void formatEntryMode(char *buffer, struct stat *status)
 {
-    char characters[] = {'r', 'w', 'x'};
-    int flags[] = {S_IRUSR, S_IWUSR, S_IXUSR, S_IRGRP, S_IWGRP, S_IXGRP, S_IROTH, S_IWOTH, S_IXOTH};
     switch (status->st_mode & S_IFMT)
     {
     case S_IFREG:
@@ -50,16 +48,27 @@ static void formatEntryMode(char *buffer, struct stat *status)
         *buffer = 's';
         break;
     }
+    char characters[] = {'r', 'w', 'x'};
+    int flags[] = {S_IRUSR, S_IWUSR, S_IXUSR, S_IRGRP, S_IWGRP, S_IXGRP, S_IROTH, S_IWOTH, S_IXOTH};
     for (size_t index = 0; index < 9; index++)
     {
         buffer[index + 1] =
             status->st_mode & flags[index] ? characters[index < 3 ? index : (index - 3) % 3] : '-';
     }
-    buffer[10] = 0;
+    buffer[10] = ' ';
+    sprintf(buffer + 11, "%o",
+            status->st_mode & (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH |
+                               S_IWOTH | S_IXOTH));
 }
 
 static void formatEntrySize(char *buffer, struct stat *status)
 {
+    if (S_ISDIR(status->st_mode))
+    {
+        *buffer = '-';
+        buffer[1] = 0;
+        return;
+    }
     struct SIMultiplier multipliers[] = {{1073741824, 'G'}, {1048576, 'M'}, {1024, 'k'}};
     for (size_t index = 0; index < 3; ++index)
     {
@@ -123,7 +132,7 @@ static void readDirectory(char *directoryPath)
         stat(entryPath, &entryStatus);
         deallocateHeapMemory(entryPath);
         char entrySize[9];
-        char entryMode[11];
+        char entryMode[15];
         formatEntrySize(entrySize, &entryStatus);
         formatEntryMode(entryMode, &entryStatus);
         printf("%5zu %-8s %-8s %-8s %s %s\n", index + 1,
