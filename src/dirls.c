@@ -104,17 +104,16 @@ static void readDirectory(char *directoryPath)
         size_t entryNameSize = strlen(entry->d_name) + 1;
         char *entryName = allocateHeapMemory(entryNameSize);
         memcpy(entryName, entry->d_name, entryNameSize);
-        *(entryNames + index++) = entryName;
+        entryNames[index++] = entryName;
     }
     closedir(directoryStream);
     qsort(entryNames, totalEntries, sizeof(char *), sortAlphabetically);
     size_t directoryPathSize = strlen(directoryPath) + 1;
     for (index = 0; index < totalEntries; ++index)
     {
-        char *entryName = *(entryNames + index);
-        size_t entryNameSize = strlen(entryName) + 1;
+        size_t entryNameSize = strlen(entryNames[index]) + 1;
         char *entryPath = allocateHeapMemory(directoryPathSize + entryNameSize);
-        sprintf(entryPath, "%s/%s", directoryPath, entryName);
+        sprintf(entryPath, "%s/%s", directoryPath, entryNames[index]);
         struct stat entryStatus;
         stat(entryPath, &entryStatus);
         deallocateHeapMemory(entryPath);
@@ -128,8 +127,8 @@ static void readDirectory(char *directoryPath)
         printf("%5zu %-8s %-8s %s %8s %s %s\n", index + 1,
                resolveCredentialByID(&g_userCredentialsTree, entryStatus.st_uid, 1)->name,
                resolveCredentialByID(&g_groupCredentialsTree, entryStatus.st_gid, 0)->name,
-               entryModifiedDate, entrySize, entryMode, entryName);
-        deallocateHeapMemory(entryName);
+               entryModifiedDate, entrySize, entryMode, entryNames[index]);
+        deallocateHeapMemory(entryNames[index]);
     }
     deallocateHeapMemory(entryNames);
 exit:
